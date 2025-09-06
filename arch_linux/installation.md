@@ -73,6 +73,7 @@ Use fdisk, or cfdisk or gdisk
 
 ### Mount Points
 
+/efi
 /boot
 /
 
@@ -88,11 +89,23 @@ mkswap /dev/nvme0n1p3
 
 Correctly mount al filesystems to the `/mnt`
 
+```
 swapon /dev/nvme0n1p3
+```
 
+```
 mount --mkdir /dev/nvme0n1p1 /mnt/boot
+```
 
+or
+
+```
+mount --mkdir /dev/nvme0n1p1 /mnt/efi
+```
+
+```
 mount /dev/nvme0n1p2 /mnt
+```
 
 ## Creating subvolumes
 
@@ -106,6 +119,7 @@ btrfs subvolume create /mnt/@tmp
 btrfs subvolume create /mnt/@log
 btrfs subvolume create /mnt/@cache
 btrfs subvolume create /mnt/@opt
+btrfs subvolume create /mnt/@srv
 btrfs subvolume create /mnt/@snapshots
 
 Unmount the roof fs
@@ -126,11 +140,20 @@ sudo mount -o subvolume=@tmp /dev/nvme0n1p3 /mnt/var/tmp
 sudo mount -o subvolume=@log /dev/nvme0n1p3 /mnt/var/log
 sudo mount -o subvolume=@cache /dev/nvme0n1p3 /mnt/var/cache
 sudo mount -o subvolume=@opt /dev/nvme0n1p3 /mnt/opt
+sudo mount -o subvolume=@srv /dev/nvme0n1p3 /mnt/srv
 sudo mount -o subvolume=@snapshots /dev/nvme0n1p3 /mnt/.snapshots
 
 List the subvolumes
 
+```
 btrfs subvolume list /mnt
+```
+
+BTRFS info
+
+```
+btrfs filesystem show /
+```
 
 ## Installation
 
@@ -239,7 +262,7 @@ Install and configure grub
 
 pacman -S grub efibootmgr
 
-grub-install --target=x86_64-efi --efi-directory=/boot --recheck
+grub-install --target=x86_64-efi --efi-directory=/efi --boot-directory=/boot --bootloader-id=arch --recheck
 
 Generate configuration file for GRUB
 
@@ -326,7 +349,7 @@ sudo chmod 750 /.snapshots
 sudo chmod a+rx /.snapshots
 
 # user will always be root, but for the group,, use the username. User of username will be able to access the snaphots
-sudo chown :username /.snapshots
+            sudo chown :username /.snapshots
 ```
 
 Go to the configuration file for snapper at `/etc/snapper/configs/root`
@@ -374,3 +397,11 @@ sudo pacman -Syu steam gamemode wine proton
 ## Battery
 
 sudo pacman -Syu auto-cpufreq
+
+# References
+
+https://github.com/silentz/arch-linux-install-guide
+
+https://gist.github.com/mjkstra/96ce7a5689d753e7a6bdd92cdc169bae
+
+https://github.com/dreamsofautonomy/arch-from-scratch
