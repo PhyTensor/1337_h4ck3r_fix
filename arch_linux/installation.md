@@ -1,5 +1,7 @@
 # Arch Linux with Hyprland and BTRFS
 
+Use Ctrl-l to clear the terminal
+
 ## Set the console keyboard layout and font
 
 List available layouts
@@ -11,7 +13,7 @@ localectl list-keymaps
 Set the layout
 
 ```
-loadkeys de-latin1
+loadkeys us
 ```
 
 ## Verify the boot mode
@@ -20,9 +22,14 @@ To verify the boot mode, check the UEFI bitness:
 
 cat /sys/firmware/efi/fw_platform_size
 
+If the directory exists, your computer supports EFI
+ls /sys/firmware/efi/efivars
+
 ### Connect to the internet
 
 iwctl
+
+device list
 
 station wlan0 get-networks
 
@@ -31,6 +38,10 @@ station wlan0 connect <essid>
 exit
 
 ping ping.archlinux.org
+
+### Update mirrorlist
+
+reflector --country Kenya --age 6 --sort rate --save /etc/pacman.d/mirrorlist
 
 ### Synchronize pacman packages
 
@@ -50,7 +61,15 @@ In case it is not active, you can do
 timedatectl set-ntp true
 ```
 
+Verify state with
+
+```
+timedatectl status
+```
+
 ## Partition the disks
+
+Use fdisk, or cfdisk or gdisk
 
 ### Mount Points
 
@@ -69,29 +88,49 @@ mkswap /dev/nvme0n1p3
 
 Correctly mount al filesystems to the `/mnt`
 
+swapon /dev/nvme0n1p3
+
 mount --mkdir /dev/nvme0n1p1 /mnt/boot
 
 mount /dev/nvme0n1p2 /mnt
 
-swapon /dev/nvme0n1p3
-
 ## Creating subvolumes
 
-btrfs subvolume create /mnt/@
+Create root subvolume
 
-btrfs subvolume create /mnt/@/var/tmp
-btrfs subvolume create /mnt/@/var/log
-btrfs subvolume create /mnt/@/var/cache
-btrfs subvolume create /mnt/@/opt
-btrfs subvolume create /mnt/@/.snapshots
+```
+btrfs subvolume create /mnt/@
+```
+
+btrfs subvolume create /mnt/@tmp
+btrfs subvolume create /mnt/@log
+btrfs subvolume create /mnt/@cache
+btrfs subvolume create /mnt/@opt
+btrfs subvolume create /mnt/@snapshots
 
 Unmount the roof fs
 
+```
 umount /mnt
+```
 
 Mount the subvolumes
 
-mount -o compress=zstd,subvol=@ /dev/nvme0n1p2 /mnt
+mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@ /dev/nvme0n1p2 /mnt
+
+Make directories for the subvolumes
+
+mkdir -p /mnt/{var/tmp,var/log,var/cache,opt,.snapshots}
+
+sudo mount -o subvolume=@tmp /dev/nvme0n1p3 /mnt/var/tmp
+sudo mount -o subvolume=@log /dev/nvme0n1p3 /mnt/var/log
+sudo mount -o subvolume=@cache /dev/nvme0n1p3 /mnt/var/cache
+sudo mount -o subvolume=@opt /dev/nvme0n1p3 /mnt/opt
+sudo mount -o subvolume=@snapshots /dev/nvme0n1p3 /mnt/.snapshots
+
+List the subvolumes
+
+btrfs subvolume list /mnt
 
 ## Installation
 
@@ -103,9 +142,11 @@ pacstrap -K /mnt base base-devel linux-zen linux-lts linux-firmware sudo fish gi
 
 ### Fstab
 
-Generate fstab
+Generate fstab (filesystem table)
 
+```
 genfstab -U /mnt >> /mnt/etc/fstab
+```
 
 Check if fstab is fine ( it is if you've faithfully followed the previous steps )
 
@@ -121,11 +162,20 @@ arch-chroot /mnt
 
 ln -sf /usr/share/zoneinfo/Africa/Nairobi /etc/localtime
 
+Synchronize hardware clock and the system clock
+
+```
 hwclock --systohc
+```
 
 ### Localization
 
+Go to /etc/locale.gen and uncomment the line with `en_US.UTF-8 UTF-8`
+Then run:
+
+```
 locale-gen
+```
 
 or
 
@@ -133,13 +183,21 @@ echo "LANG=en_US.UTF-8" > /etc/locale.conf
 
 Set the console keyboard layout
 
-echo "KEYMAP=de-latin1" > /etc/vconsole.conf
+echo "KEYMAP=us" > /etc/vconsole.conf
 
 ### Network configuration
 
 Create hostname file:
 
 echo "archlinux" > /etc/hostname
+
+### Root password
+
+passwd root
+
+### Install other packages
+
+pacman -Syu grub efibootmgr networkmanager git reflector snapper bluez bluez-utils xdg-user-dirs xdg-utils base-devel linux-headers
 
 ### Add new users and setup passwords
 
@@ -159,11 +217,21 @@ $ visudo
 
 ### Initramfs
 
+### Make slight change to mkinitcpio.conf file
+
+Ensure to add the btrfs in the MODULES array
+
+```
+
+MODULES=(usbhid xhci_hcd)
+MODULES=(btrfs)
+```
+
+Then run:
+
+```
 mkinitcpio -P
-
-### Root password
-
-passwd root
+```
 
 ### Boot loader
 
@@ -173,7 +241,11 @@ pacman -S grub efibootmgr
 
 grub-install --target=x86_64-efi --efi-directory=/boot --recheck
 
+Generate configuration file for GRUB
+
+```
 grub-mkconfig -o /boot/grub/grub.cfg
+```
 
 ### Network stack
 
@@ -203,6 +275,77 @@ Enable and start the time synchronization service
 
 ```
 timedatectl set-ntp true
+```
+
+## Configure Snapshots
+
+We need to configure snapshots directory, since we don't have the configurations for snapper
+
+Unmount snaphosts directory
+
+```
+umount /.snapshots
+```
+
+Remove the directory
+
+```
+rm -r /.snapshots
+```
+
+Create configuration for snapper
+
+```
+sudo snapper -c root create-config /
+```
+
+Above command a new .snapshots directory. Delete it.
+
+```
+sudo btrfs subvolume delete /.snapshots
+```
+
+Re-create our snapshots directory
+
+```
+sudo mkdir /.snapshots
+```
+
+Remount snapshots subvolume. We already have its mountpoint in the fstab file, thus we can run the simpler command
+
+```
+sudo mount -a
+```
+
+Change permissions for snapshots folder. All snapshots that snapper creates will be stored outside of the root subvolume. So that
+the root subvolume can be easily replaced any time without losing the snapshots.
+
+```
+sudo chmod 750 /.snapshots
+```
+
+Go to the configuration file for snapper at `/etc/snapper/configs/root`
+Go to users and groups section and inlcude your username in the ALLOW_USERS entry; allwos your user to manage the snaphosts.
+Adjust how many snaphosts you want to keep in the system; adjust the sectio for limits for timeline cleanup.
+We can enable timeline and timeline cleanup of snapper:
+
+```
+sudo systemctl enable --now snapper-timeline.timer
+suod systemctl enable --now snapper-cleanup.timer
+```
+
+You can install some packgess:
+
+```
+sudo pacman -Syu snap-pac-grub snapper-gui
+```
+
+Boot dir is not a btrfs directory; but we can create a hook so that we can 'backup' the boot directory as well, when there is a kernel update
+
+```
+mkkdir /etc/pacman.d/hooks/
+
+touch /etc/pacman.d/hooks/50-bootbackup.hook
 ```
 
 ## Video Drivers
