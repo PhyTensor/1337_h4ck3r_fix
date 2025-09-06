@@ -322,6 +322,11 @@ the root subvolume can be easily replaced any time without losing the snapshots.
 
 ```
 sudo chmod 750 /.snapshots
+
+sudo chmod a+rx /.snapshots
+
+# user will always be root, but for the group,, use the username. User of username will be able to access the snaphots
+sudo chown :username /.snapshots
 ```
 
 Go to the configuration file for snapper at `/etc/snapper/configs/root`
