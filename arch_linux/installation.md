@@ -445,7 +445,54 @@ sudo systemctl start systemd-zram-setup@zram0.service
 
 ```
 
+## SDDM
+```
+sudo pacman -Syu sddm
 
+sudo systemctl enable sddm
+
+```
+
+```
+sudo pacman -Syu sddm qt5-graphicaleffects qt5-svg qt5-quickcontrols2
+```
+
+Cloned the corners theme: `git clone https://github.com/aczw/sddm-theme-corners.git`
+
+Copy to sddm themes:
+```
+cd sddm-theme-corners
+
+sudo cp -r corners/ /usr/share/sddm/themes/
+```
+
+Create config directory: `sudo mkdir /etc/sddm.conf.d/`
+
+Create `sddm` config file: `touch sddm.conf` with the contents:
+```
+[Theme]
+Current=corners
+```
+
+To always ensure numlock is always on at startup; create file `numlock.conf` in the same directory with contents:
+```
+Numlock=on
+```
+
+## Fonts
+
+```
+sudo pacman -Syu ttf-jetbrains-mono-nerd
+```
+### CJK
+```
+sudo pacman -Syu noto-fonts-cjk wqy-microhei
+```
+
+### Emoji
+```
+sudo pacman -Syu noto-fonts-emoji
+```
 
 # References
 
