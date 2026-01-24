@@ -20,13 +20,19 @@ loadkeys us
 
 To verify the boot mode, check the UEFI bitness:
 
+```
 cat /sys/firmware/efi/fw_platform_size
+```
 
 If the directory exists, your computer supports EFI
+
+```
 ls /sys/firmware/efi/efivars
+```
 
 ### Connect to the internet
 
+```
 iwctl
 
 device list
@@ -38,6 +44,7 @@ station wlan0 connect <essid>
 exit
 
 ping ping.archlinux.org
+```
 
 ### Update mirrorlist
 
@@ -283,10 +290,10 @@ sudo systemctl start NetworkManager.service
 ```
 
 Install additional interfaces: for a graphical user interface and system tray applet respectively.
+
 ```
 sudo pacman -Syu nm-connection-editor network-manager-applet
 ```
-
 
 ## Reboot
 
@@ -409,6 +416,7 @@ sudo pacman -Syu auto-cpufreq
 ## Hibernation
 
 ### Manually specify hibernation location
+
 ```
 sudo vim /etc/default/grub
 ```
@@ -418,19 +426,21 @@ GRUB_CMDLINE_LINUX_DEFAULT="quiet resume=UUID=<UUID of your swap partition>"
 ```
 
 Generate GRUB config
+
 ```
 sudo grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
 COnfigure initranmfs, by adding the `resume` hook in the `/etc/mkinitcpio.conf` file. The `resume` hook needs go after the `udev` hook:
+
 ```
 HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block filesystems resume fsck)
 ```
 
-
 ## ZRAM
 
 Install `zram-generator` and create file `/etc/systemd/zram-generator.conf` with the following:
+
 ```
 [zram0]
 zram-size = min(4096, 8192)
@@ -440,12 +450,14 @@ swap-priority=60
 ```
 
 The run `sudo systemctl daemon-reload` adn start the configured service:
+
 ```
 sudo systemctl start systemd-zram-setup@zram0.service
 
 ```
 
 ## SDDM
+
 ```
 sudo pacman -Syu sddm
 
@@ -460,6 +472,7 @@ sudo pacman -Syu sddm qt5-graphicaleffects qt5-svg qt5-quickcontrols2
 Cloned the corners theme: `git clone https://github.com/aczw/sddm-theme-corners.git`
 
 Copy to sddm themes:
+
 ```
 cd sddm-theme-corners
 
@@ -469,12 +482,14 @@ sudo cp -r corners/ /usr/share/sddm/themes/
 Create config directory: `sudo mkdir /etc/sddm.conf.d/`
 
 Create `sddm` config file: `touch sddm.conf` with the contents:
+
 ```
 [Theme]
 Current=corners
 ```
 
 To always ensure numlock is always on at startup; create file `numlock.conf` in the same directory with contents:
+
 ```
 Numlock=on
 ```
@@ -484,12 +499,15 @@ Numlock=on
 ```
 sudo pacman -Syu ttf-jetbrains-mono-nerd
 ```
+
 ### CJK
+
 ```
 sudo pacman -Syu noto-fonts-cjk wqy-microhei
 ```
 
 ### Emoji
+
 ```
 sudo pacman -Syu noto-fonts-emoji
 ```
