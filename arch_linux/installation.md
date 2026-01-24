@@ -80,7 +80,7 @@ timedatectl status
 
 ## Partition the disks
 
-Use fdisk, or cfdisk or gdisk
+Use `fdisk`, or `cfdisk` or `gdisk`
 
 ### Mount Points
 
@@ -105,21 +105,7 @@ mkfs.btrfs /dev/nvme0n1p4
 
 ## Mount the file systemss
 
-Correctly mount all filesystems to the `/mnt`
-
-```
-swapon /dev/nvme0n1p3
-```
-
-```
-mount --mkdir /dev/nvme0n1p1 /mnt/boot
-```
-
-or
-
-```
-mount --mkdir /dev/nvme0n1p1 /mnt/efi
-```
+Create mounts for the root filesystem at `/mnt/`
 
 ```
 mount /dev/nvme0n1p2 /mnt
@@ -159,24 +145,36 @@ Mount the subvolumes
 mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@ /dev/nvme0n1p2 /mnt
 ```
 
-Make directories for the subvolumes
+Make directories for the other volumes and subvolumes
 
 ```
-mkdir -p /mnt/{var/tmp,var/log,var/cache,opt,.snapshots}
+mkdir -p /mnt/{efi,boot,home,var/tmp,var/log,var/cache,opt,.snapshots}
 ```
 
+Mount the subvolumes
+
 ```
-sudo mount -o subvolume=@tmp /dev/nvme0n1p3 /mnt/var/tmp
+sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@tmp /dev/nvme0n1p3 /mnt/var/tmp
 
-sudo mount -o subvolume=@log /dev/nvme0n1p3 /mnt/var/log
+sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@log /dev/nvme0n1p3 /mnt/var/log
 
-sudo mount -o subvolume=@cache /dev/nvme0n1p3 /mnt/var/cache
+sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@cache /dev/nvme0n1p3 /mnt/var/cache
 
-sudo mount -o subvolume=@opt /dev/nvme0n1p3 /mnt/opt
+sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@opt /dev/nvme0n1p3 /mnt/opt
 
-sudo mount -o subvolume=@srv /dev/nvme0n1p3 /mnt/srv
+sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@srv /dev/nvme0n1p3 /mnt/srv
 
-sudo mount -o subvolume=@snapshots /dev/nvme0n1p3 /mnt/.snapshots
+sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@snapshots /dev/nvme0n1p3 /mnt/.snapshots
+```
+
+Mount the other volumes
+
+```
+mount /dev/nvme0n1p1 /mnt/efi
+
+swapon /dev/nvme0n1p3
+
+mount /dev/nvme0n1p4 /mnt/home
 ```
 
 List the subvolumes
