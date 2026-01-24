@@ -48,11 +48,15 @@ ping ping.archlinux.org
 
 ### Update mirrorlist
 
+```
 reflector --country Kenya --age 6 --sort rate --save /etc/pacman.d/mirrorlist
+```
 
 ### Synchronize pacman packages
 
+```
 pacman -Syy
+```
 
 ## Update system clock
 
@@ -80,21 +84,28 @@ Use fdisk, or cfdisk or gdisk
 
 ### Mount Points
 
+```
 /efi
 /boot
 /
+/home
+```
 
 ## Format the partitions
 
+```
 mkfs.fat -F 32 /dev/nvme0n1p1
 
 mkfs.btrfs /dev/nvme0n1p2
 
 mkswap /dev/nvme0n1p3
 
+mkfs.btrfs /dev/nvme0n1p4
+```
+
 ## Mount the file systemss
 
-Correctly mount al filesystems to the `/mnt`
+Correctly mount all filesystems to the `/mnt`
 
 ```
 swapon /dev/nvme0n1p3
@@ -122,12 +133,19 @@ Create root subvolume
 btrfs subvolume create /mnt/@
 ```
 
+```
 btrfs subvolume create /mnt/@tmp
+
 btrfs subvolume create /mnt/@log
+
 btrfs subvolume create /mnt/@cache
+
 btrfs subvolume create /mnt/@opt
+
 btrfs subvolume create /mnt/@srv
+
 btrfs subvolume create /mnt/@snapshots
+```
 
 Unmount the roof fs
 
@@ -137,18 +155,29 @@ umount /mnt
 
 Mount the subvolumes
 
+```
 mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@ /dev/nvme0n1p2 /mnt
+```
 
 Make directories for the subvolumes
 
+```
 mkdir -p /mnt/{var/tmp,var/log,var/cache,opt,.snapshots}
+```
 
+```
 sudo mount -o subvolume=@tmp /dev/nvme0n1p3 /mnt/var/tmp
+
 sudo mount -o subvolume=@log /dev/nvme0n1p3 /mnt/var/log
+
 sudo mount -o subvolume=@cache /dev/nvme0n1p3 /mnt/var/cache
+
 sudo mount -o subvolume=@opt /dev/nvme0n1p3 /mnt/opt
+
 sudo mount -o subvolume=@srv /dev/nvme0n1p3 /mnt/srv
+
 sudo mount -o subvolume=@snapshots /dev/nvme0n1p3 /mnt/.snapshots
+```
 
 List the subvolumes
 
@@ -166,7 +195,9 @@ btrfs filesystem show /
 
 Install essential packages into the new filesystem
 
+```
 pacstrap -K /mnt base base-devel linux-zen linux-lts linux-firmware sudo fish git btrfs-progs vim amd-ucode openssh networkmanager pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber
+```
 
 ## Configure the system
 
@@ -186,11 +217,15 @@ cat /mnt/etc/fstab
 
 ### Chroot
 
+```
 arch-chroot /mnt
+```
 
 ### Time
 
+```
 ln -sf /usr/share/zoneinfo/Africa/Nairobi /etc/localtime
+```
 
 Synchronize hardware clock and the system clock
 
@@ -209,33 +244,47 @@ locale-gen
 
 or
 
+```
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
+```
 
 Set the console keyboard layout
 
+```
 echo "KEYMAP=us" > /etc/vconsole.conf
+```
 
 ### Network configuration
 
 Create hostname file:
 
+```
 echo "archlinux" > /etc/hostname
+```
 
 ### Root password
 
+```
 passwd root
+```
 
 ### Install other packages
 
+```
 pacman -Syu grub efibootmgr networkmanager git reflector snapper bluez bluez-utils xdg-user-dirs xdg-utils base-devel linux-headers
+```
 
 ### Add new users and setup passwords
 
+```
 useradd -mG wheel -s /bin/bash <username>
 
 passwd <username>
+```
 
+```
 EDITOR=vim visudo
+```
 
 #### Add Wheel to group to sudoers file to allow users to run sudo
 
@@ -267,9 +316,11 @@ mkinitcpio -P
 
 Install and configure grub
 
+```
 pacman -S grub efibootmgr
 
 grub-install --target=x86_64-efi --efi-directory=/efi --boot-directory=/boot --bootloader-id=arch --recheck
+```
 
 Generate configuration file for GRUB
 
@@ -299,6 +350,7 @@ sudo pacman -Syu nm-connection-editor network-manager-applet
 
 exit the chroot environmenmt
 
+```
 exit
 
 umount /mnt/boot
@@ -306,6 +358,7 @@ umount /mnt/boot
 umount /mnt
 
 reboot
+```
 
 ## On Login
 
@@ -393,25 +446,35 @@ touch /etc/pacman.d/hooks/50-bootbackup.hook
 
 ## Video Drivers
 
+```
 sudo pacman -Syu mesa vulkan-radeon libva-mesa-driver mesa-vdpau lib32-mesa lib32-vulkan-radeon lib32-libva-mesa-driver lib32-mesa-vdpau
+```
 
 ## Hyprland
 
+```
 sudo pacman -Syu hyprland wofi waybar
+```
 
 ## Display manager
 
+```
 sudo pacman -Syu sddm
 
 sudo systemctl enable sddm
+```
 
 ## Gaming
 
+```
 sudo pacman -Syu steam gamemode wine proton
+```
 
 ## Battery
 
+```
 sudo pacman -Syu auto-cpufreq
+```
 
 ## Hibernation
 
@@ -431,7 +494,7 @@ Generate GRUB config
 sudo grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
-COnfigure initranmfs, by adding the `resume` hook in the `/etc/mkinitcpio.conf` file. The `resume` hook needs go after the `udev` hook:
+Configure initranmfs, by adding the `resume` hook in the `/etc/mkinitcpio.conf` file. The `resume` hook needs go after the `udev` hook:
 
 ```
 HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block filesystems resume fsck)
