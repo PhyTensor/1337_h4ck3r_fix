@@ -148,23 +148,23 @@ mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@ /dev/nvme0n1p2 /mnt
 Make directories for the other volumes and subvolumes
 
 ```
-mkdir -p /mnt/{efi,boot,home,var/tmp,var/log,var/cache,opt,.snapshots}
+mkdir -p /mnt/{efi,boot,home,var/tmp,var/log,var/cache,opt,srv,.snapshots}
 ```
 
 Mount the subvolumes
 
 ```
-sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@tmp /dev/nvme0n1p3 /mnt/var/tmp
+sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@tmp /dev/nvme0n1p2 /mnt/var/tmp
 
-sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@log /dev/nvme0n1p3 /mnt/var/log
+sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@log /dev/nvme0n1p2 /mnt/var/log
 
-sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@cache /dev/nvme0n1p3 /mnt/var/cache
+sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@cache /dev/nvme0n1p2 /mnt/var/cache
 
-sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@opt /dev/nvme0n1p3 /mnt/opt
+sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@opt /dev/nvme0n1p2 /mnt/opt
 
-sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@srv /dev/nvme0n1p3 /mnt/srv
+sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@srv /dev/nvme0n1p2 /mnt/srv
 
-sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@snapshots /dev/nvme0n1p3 /mnt/.snapshots
+sudo mount -o noatime,compress=zstd,ssd,space_cache=v2,subvol=@snapshots /dev/nvme0n1p2 /mnt/.snapshots
 ```
 
 Mount the other volumes
@@ -194,7 +194,7 @@ btrfs filesystem show /
 Install essential packages into the new filesystem
 
 ```
-pacstrap -K /mnt base base-devel linux-zen linux-lts linux-firmware sudo fish git btrfs-progs vim amd-ucode openssh networkmanager pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber
+pacstrap -K /mnt base base-devel linux-zen linux-zen-headers linux-lts linux-headers linux-firmware sudo fish git btrfs-progs vim amd-ucode openssh networkmanager pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber
 ```
 
 ## Configure the system
@@ -269,7 +269,7 @@ passwd root
 ### Install other packages
 
 ```
-pacman -Syu grub efibootmgr networkmanager git reflector snapper bluez bluez-utils xdg-user-dirs xdg-utils base-devel linux-headers
+pacman -Syu grub efibootmgr networkmanager git reflector snapper bluez bluez-utils xdg-user-dirs xdg-utils kitty alacritty ghostty
 ```
 
 ### Add new users and setup passwords
@@ -351,9 +351,7 @@ exit the chroot environmenmt
 ```
 exit
 
-umount /mnt/boot
-
-umount /mnt
+umount -R /mnt
 
 reboot
 ```
@@ -444,22 +442,33 @@ touch /etc/pacman.d/hooks/50-bootbackup.hook
 
 ## Video Drivers
 
-```
-sudo pacman -Syu mesa vulkan-radeon libva-mesa-driver mesa-vdpau lib32-mesa lib32-vulkan-radeon lib32-libva-mesa-driver lib32-mesa-vdpau
-```
-
-## Hyprland
+Vulkan drivers
 
 ```
-sudo pacman -Syu hyprland wofi waybar
+sudo pacman -Syu vulkan-radeon lib32-vulkan-radeon vulkan-icd-loader lib32-vulkan-icd-loader
+```
+
+Graphics and utility packages for Nvidia
+
+```
+sudo pacman -Syu mesa xf86-video-amdgpu nvidia-open-dkms nvidia-utils nvidia-settings lib32-nvidia-utils
+```
+
+## Hyprland or Niri
+
+For launching standalone compositors like Niri through UWSM (Universal Wayland Session Manager)
+```
+sudo pacman -Syu uwsm
+```
+
+```
+sudo pacman -Syu niri hyprland wofi waybar xdg-desktop-portal xdg-desktop-portal-gtk
 ```
 
 ## Display manager
 
 ```
 sudo pacman -Syu sddm
-
-sudo systemctl enable sddm
 ```
 
 ## Gaming
@@ -545,6 +554,9 @@ Create config directory: `sudo mkdir /etc/sddm.conf.d/`
 Create `sddm` config file: `touch sddm.conf` with the contents:
 
 ```
+[General]
+DisplayServer=wayland
+
 [Theme]
 Current=corners
 ```
@@ -571,6 +583,40 @@ sudo pacman -Syu noto-fonts-cjk wqy-microhei
 
 ```
 sudo pacman -Syu noto-fonts-emoji
+```
+
+## Nvidia Quirks
+
+### EGLStream
+
+Ensure that the explicit bridge between the NVIDIA driver and Wayland is fully updated and installed:
+
+```
+sudo pacman -S --needed egl-wayland
+```
+
+### Enable Kernel Framebuffer (Nvidia, Wayland)
+
+```
+sudo vim /etc/default/grub
+```
+
+Append to the line:
+`GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet nvidia-drm.modeset=1 nvidia-drm.fbdev=1"`
+
+```
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+```
+
+### Enable Video Memory Preservation
+
+```
+sudo vim /etc/modprobe.d/nvidia.conf
+```
+
+Add the following line to ensure VRAM is properly managed and allocated during Wayland state changes:
+```
+options nvidia NVreg_PreserveVideoMemoryAllocations=1
 ```
 
 # References
